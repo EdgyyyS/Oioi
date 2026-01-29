@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARCHETYPE | Sistema de Imagem & Posicionamento</title>
+    
+    <!-- Frameworks & Fonts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Inter:wght@300;400;700;900&family=Archivo:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --accent: #00df81;
+            --gold: #d4af37;
+        }
+        body {
+            background-color: #020202;
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+        .serif { font-family: 'Playfair Display', serif; }
+        .sans-bold { font-family: 'Archivo', sans-serif; font-weight: 900; letter-spacing: -0.02em; }
+        
+        .bg-grid {
+            background-image: linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: url("https://www.transparenttextures.com/patterns/carbon-fibre.png");
+            opacity: 0.03;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        @keyframes scan { 0% { transform: translateY(-100%); } 100% { transform: translateY(1000%); } }
+        .scanline {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 2px;
+            background: linear-gradient(to right, transparent, var(--accent), transparent);
+            box-shadow: 0 0 15px var(--accent);
+            animation: scan 4s linear infinite;
+            z-index: 20;
+        }
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(40px);
+            filter: blur(5px);
+            transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .reveal.active { opacity: 1; transform: translateY(0); filter: blur(0); }
+
+        .gold-gradient {
+            background: linear-gradient(135deg, #d4af37 0%, #f9f295 50%, #b8860b 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        @keyframes slow-zoom { from { transform: scale(1); } to { transform: scale(1.15); } }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #1a1a1a; transition: background 0.3s; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+        
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- Injeção do SDK Gemini ---
+        const callAI = async (contents, model = 'gemini-3-flash-preview', isImage = false) => {
+            const { GoogleGenAI } = await import('https://esm.sh/@google/genai@^1.38.0');
+            const ai = new GoogleGenAI({ apiKey: window.process?.env?.API_KEY || '' });
+            return await ai.models.generateContent({
+                model,
+                contents,
+                config: isImage ? {} : { tools: [{ googleSearch: {} }] }
+            });
+        };
+
+        // --- Componentes ---
+
+        const Header = () => {
+            const [scrolled, setScrolled] = useState(false);
+            useEffect(() => {
+                const h = () => setScrolled(window.scrollY > 50);
+                window.addEventListener('scroll', h);
+                return () => window.removeEventListener('scroll', h);
+            }, []);
+
+            return (
+                <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-700 px-8 lg:px-20 flex items-center justify-between h-24 ${scrolled ? 'bg-black/95 backdrop-blur-md border-b border-white/5' : 'bg-transparent'}`}>
+                    <nav className="hidden md:flex gap-10 text-[10px] uppercase tracking-[0.5em] font-bold text-white/40">
+                        <a href="#home" className="hover:text-white transition-colors">Início</a>
+                        <a href="#methodology" className="hover:text-white transition-colors">Ecossistema</a>
+                        <a href="#gallery" className="hover:text-white transition-colors">Arquétipos</a>
+                        <a href="#scanner" className="hover:text-white transition-colors">Scanner IA</a>
+                    </nav>
+                    <div className="serif text-2xl lg:text-3xl font-black tracking-[0.6em] uppercase italic cursor-default">
+                        ARCHE<span className="text-[#00df81]">TYPE</span>
+                    </div>
+                    <button className="border border-white/10 bg-white/5 px-10 py-3 text-[10px] font-black uppercase tracking-[0.3em] hover:bg-white hover:text-black transition-all">Acesso Restrito</button>
+                </header>
+            );
+        };
+
+        const Hero = () => (
+            <section id="home" className="relative h-screen w-full overflow-hidden flex items-center justify-center bg-black">
+                <div className="absolute inset-0 bg-cover bg-center opacity-40 animate-[slow-zoom_30s_infinite_linear]" style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1514565131-fce0801e5785?q=80&w=2000")', filter: 'contrast(1.2) brightness(0.5)' }}></div>
+                <div className="absolute inset-0 bg-grid opacity-10"></div>
+                <div className="relative z-10 w-full max-w-7xl mx-auto px-8 text-center">
+                    <div className="inline-flex items-center gap-4 mb-10 bg-black/40 backdrop-blur-xl px-8 py-3 border border-white/5 reveal active">
+                        <span className="w-2 h-2 bg-[#00df81] rounded-full animate-ping"></span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.6em] text-white/80">Protocolo de Elite v4.2 Ativo</span>
+                    </div>
+                    <h1 className="sans-bold text-7xl md:text-[11rem] mb-6 leading-[0.85] tracking-tighter reveal active">
+                        ESTRATÉGIA <br/><span className="gold-gradient italic serif font-light opacity-80">SILENCIOSA.</span>
+                    </h1>
+                    <p className="text-gray-400 text-lg md:text-2xl font-light mb-16 max-w-3xl mx-auto reveal active leading-relaxed">
+                        Engenharia de imagem para o topo. Transformamos sua presença em uma ferramenta de dominância absoluta.
+                    </p>
+                    <div className="flex flex-col md:flex-row gap-6 justify-center reveal active">
+                        <a href="#scanner" className="bg-white text-black px-16 py-7 text-[11px] font-black uppercase tracking-[0.5em] hover:bg-[#00df81] transition-all">Iniciar Varredura Neural</a>
+                        <a href="#diagnosis" className="border border-white/20 text-white px-12 py-7 text-[11px] font-black uppercase tracking-[0.5em] hover:bg-white/10 transition-all">Sessão Estratégica</a>
+                    </div>
+                </div>
+            </section>
+        );
+
+        const Methodology = () => {
+            const [expanded, setExpanded] = useState(0);
+            const items = [
+                { num: '01', title: 'SCAN BIO-ARQUETÍPICO', desc: 'Mapeamento facial e linguagem silenciosa com precisão neural.', details: 'Análise milimétrica da estrutura óssea e pontos de autoridade para alinhar sua geometria facial aos seus objetivos de poder.' },
+                { num: '02', title: 'SIMULAÇÃO DE IMPACTO', desc: 'Cálculo de autoridade percebida em cenários de alta pressão.', details: 'Projetamos sua imagem em ambientes de negociação e círculos sociais de elite para garantir capital social máximo.' },
+                { num: '03', title: 'POSICIONAMENTO GUIADO', desc: 'Execução milimétrica do protocolo de imagem e vestuário.', details: 'Implementação da sua nova armadura. Curadoria de estilo e postura que alinham seu eu interno ao seu impacto externo.' }
+            ];
+            return (
+                <section id="methodology" className="py-32 bg-white text-black px-8">
+                    <div className="max-w-7xl mx-auto">
+                        <h2 className="sans-bold text-6xl md:text-9xl uppercase mb-24 reveal active">ECOSSISTEMA <br/><span className="italic text-gray-300">DIGITAL.</span></h2>
+                        <div className="border-t border-black/10">
+                            {items.map((item, i) => (
+                                <div key={i} className="group py-16 border-b border-black/10 reveal active cursor-pointer" onClick={() => setExpanded(i)}>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex gap-12 items-center">
+                                            <span className="sans-bold text-xl text-[#00df81]">{item.num}</span>
+                                            <div>
+                                                <h3 className="sans-bold text-3xl uppercase">{item.title}</h3>
+                                                <p className="text-gray-500 mt-2 font-light">{item.desc}</p>
+                                            </div>
+                                        </div>
+                                        <span className={`text-3xl transition-transform ${expanded === i ? 'rotate-45' : ''}`}>+</span>
+                                    </div>
+                                    <div className={`overflow-hidden transition-all duration-500 ${expanded === i ? 'max-h-40 mt-10' : 'max-h-0'}`}>
+                                        <p className="text-gray-600 max-w-3xl font-light italic border-l-2 border-[#00df81] pl-8">{item.details}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            );
+        };
+
+        const Gallery = () => {
+            const images = [
+                { url: 'https://images.unsplash.com/photo-1550246140-5119ae4790b8?q=80&w=800', title: 'Arquétipo Soberano', tag: 'Autoridade' },
+                { url: 'https://images.unsplash.com/photo-1519085188583-6ad28a665b20?q=80&w=800', title: 'Presença Executiva', tag: 'Dominância' },
+                { url: 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?q=80&w=800', title: 'Impacto Social', tag: 'Elite' },
+                { url: 'https://images.unsplash.com/photo-1617137984095-74e4e5e3613f?q=80&w=800', title: 'O Código Visual', tag: 'Silencioso' },
+                { url: 'https://images.unsplash.com/photo-1504192010706-96ec9697089b?q=80&w=800', title: 'Transformação 90D', tag: 'Evolução' },
+                { url: 'https://images.unsplash.com/photo-1516251193007-45ef944ab0c6?q=80&w=800', title: 'Domínio de Estilo', tag: 'Poder' }
+            ];
+            return (
+                <section id="gallery" className="py-32 bg-[#050505]">
+                    <div className="px-8 max-w-7xl mx-auto mb-20 reveal active">
+                        <h2 className="sans-bold text-6xl md:text-8xl uppercase mb-6">RETRATOS DE <br/><span className="gold-gradient italic serif font-light">PODER.</span></h2>
+                        <p className="text-gray-500 uppercase tracking-widest text-[10px]">A transformação visível do topo.</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-1 reveal active">
+                        {images.map((img, i) => (
+                            <div key={i} className="relative aspect-[3/4] group grayscale hover:grayscale-0 transition-all duration-1000 overflow-hidden">
+                                <img src={img.url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black flex flex-col justify-end p-10 opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                                    <span className="text-[#00df81] text-[9px] uppercase tracking-widest mb-4 font-bold">{img.tag}</span>
+                                    <span className="sans-bold text-2xl uppercase text-white">{img.title}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            );
+        };
+
+        const AIAnalysis = () => {
+            const [loading, setLoading] = useState(false);
+            const [preview, setPreview] = useState(null);
+            const [result, setResult] = useState(null);
+            const [score, setScore] = useState(0);
+            const fileRef = useRef();
+
+            const analyze = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onloadend = async () => {
+                    setPreview(reader.result);
+                    setLoading(true);
+                    setResult(null);
+                    try {
+                        const contents = { parts: [{ inlineData: { mimeType: 'image/jpeg', data: reader.result.split(',')[1] } }, { text: "Analise esta foto do usuário como estrategista ARCHETYPE. Forneça Diagnóstico de Autoridade, Pontos de Dreno e Plano de Ataque. Ao final escreva SCORE: [0-100]. Seja sofisticado e incisivo." }] };
+                        const res = await callAI(contents, 'gemini-3-flash-preview', true);
+                        const text = res.text || "";
+                        setResult(text.split('SCORE:')[0]);
+                        const sMatch = text.match(/SCORE:\s*(\d+)/);
+                        setScore(sMatch ? parseInt(sMatch[1]) : 50);
+                    } catch (err) { setResult("Falha na conexão neural. Verifique sua chave de API."); }
+                    finally { setLoading(false); }
+                };
+                reader.readAsDataURL(file);
+            };
+
+            return (
+                <section id="scanner" className="py-32 bg-black px-8">
+                    <div className="max-w-5xl mx-auto glass-panel p-2 reveal active">
+                        <div className="bg-black/95 p-12 text-center relative overflow-hidden">
+                            {!preview ? (
+                                <div onClick={() => fileRef.current.click()} className="h-[500px] border border-dashed border-white/10 flex flex-col items-center justify-center cursor-pointer hover:bg-white/[0.02] transition-all group">
+                                    <div className="w-20 h-20 border border-white/10 flex items-center justify-center mb-8 group-hover:border-[#00df81] transition-colors">
+                                        <span className="text-4xl text-white/20">+</span>
+                                    </div>
+                                    <span className="text-[10px] uppercase tracking-[0.8em] font-black text-white/30">Upload Biométrico</span>
+                                </div>
+                            ) : (
+                                <div>
+                                    <div className="relative mb-12 overflow-hidden border border-white/5">
+                                        <img src={preview} className="w-full h-[500px] object-cover grayscale brightness-50" />
+                                        {loading && <div className="scanline"></div>}
+                                    </div>
+                                    {result && (
+                                        <div className="text-left animate-in fade-in duration-1000">
+                                            <div className="flex justify-between items-end mb-12 border-b border-white/10 pb-12">
+                                                <div className="sans-bold text-[10px] uppercase tracking-widest text-[#00df81]">Power Score Index</div>
+                                                <span className="serif text-8xl gold-gradient font-black italic">{score}%</span>
+                                            </div>
+                                            <div className="text-gray-400 leading-relaxed font-light whitespace-pre-wrap border-l-2 border-[#00df81]/30 pl-8">
+                                                {result}
+                                            </div>
+                                            <button onClick={() => {setPreview(null); setResult(null);}} className="mt-12 text-[9px] uppercase tracking-widest text-white/40 hover:text-white transition-all underline underline-offset-8">Nova Análise</button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            <input type="file" ref={fileRef} className="hidden" accept="image/*" onChange={analyze} />
+                        </div>
+                    </div>
+                </section>
+            );
+        };
+
+        const StrategicDiagnosis = () => {
+            const [done, setDone] = useState(false);
+            return (
+                <section id="diagnosis" className="py-40 bg-white text-black px-8">
+                    <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
+                        <div className="reveal active">
+                            <h2 className="sans-bold text-6xl md:text-8xl uppercase mb-12">DIAGNÓSTICO <br/><span className="italic text-gray-300">ESTRATÉGICO.</span></h2>
+                            <p className="text-gray-500 text-xl font-light leading-relaxed max-w-md">Análise biográfica e neural de 45 minutos para validar sua transição de imagem.</p>
+                        </div>
+                        <div className="bg-white p-12 shadow-2xl reveal active border border-black/5">
+                            {!done ? (
+                                <form className="space-y-12" onSubmit={(e) => {e.preventDefault(); setDone(true);}}>
+                                    <input required className="w-full border-b border-black/10 py-4 text-xl sans-bold uppercase placeholder:text-black/10 outline-none focus:border-black transition-all" placeholder="NOME COMPLETO" />
+                                    <input required className="w-full border-b border-black/10 py-4 text-xl sans-bold uppercase placeholder:text-black/10 outline-none focus:border-black transition-all" placeholder="WHATSAPP DE NEGÓCIOS" />
+                                    <button className="w-full bg-black text-white py-6 sans-bold text-xs uppercase tracking-[0.4em] hover:bg-black/90 transition-all">Solicitar Acesso</button>
+                                </form>
+                            ) : (
+                                <div className="text-center py-10">
+                                    <div className="w-20 h-20 border border-[#00df81] rounded-full flex items-center justify-center mx-auto mb-6 text-[#00df81] text-2xl">✓</div>
+                                    <h3 className="sans-bold text-2xl uppercase">Solicitação Enviada.</h3>
+                                    <p className="text-gray-500 mt-4">Nossa curadoria entrará em contato.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </section>
+            );
+        };
+
+        const ChatBot = () => {
+            const [open, setOpen] = useState(false);
+            const [input, setInput] = useState('');
+            const [messages, setMessages] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const scrollRef = useRef();
+
+            useEffect(() => {
+                if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+            }, [messages, loading]);
+
+            const handleSend = async (e) => {
+                e.preventDefault();
+                if (!input.trim() || loading) return;
+
+                const userMsg = { role: 'user', text: input };
+                setMessages(prev => [...prev, userMsg]);
+                setInput('');
+                setLoading(true);
+
+                try {
+                    const history = messages.map(m => ({ role: m.role, parts: [{ text: m.text }] }));
+                    const contents = [
+                        { role: 'user', parts: [{ text: "Você é o Estrategista Neural do ARCHETYPE SYSTEM. Responda de forma sofisticada, direta e com autoridade sobre imagem masculina e posicionamento de poder." }] },
+                        ...history,
+                        { role: 'user', parts: [{ text: input }] }
+                    ];
+                    const res = await callAI(contents);
+                    setMessages(prev => [...prev, { role: 'model', text: res.text }]);
+                } catch (err) {
+                    setMessages(prev => [...prev, { role: 'model', text: "O sistema detectou um ruído na conexão neural. Tente novamente." }]);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="fixed bottom-8 right-8 z-[100]">
+                    <button onClick={() => setOpen(!open)} className={`w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 ${open ? 'bg-white text-black rotate-90' : 'bg-black text-white border border-white/10'}`}>
+                        {open ? '✕' : <span className="sans-bold text-[10px] tracking-widest">AI</span>}
+                    </button>
+                    {open && (
+                        <div className="absolute bottom-20 right-0 w-[350px] md:w-[420px] h-[600px] glass-panel flex flex-col shadow-[0_40px_100px_rgba(0,0,0,0.8)] animate-in slide-in-from-bottom-10">
+                            <div className="p-8 border-b border-white/10 flex justify-between items-center bg-black/40">
+                                <div>
+                                    <h3 className="sans-bold text-[11px] uppercase tracking-[0.4em]">Estrategista Neural</h3>
+                                    <p className="text-[8px] uppercase tracking-widest text-[#00df81] animate-pulse">Online // v4.2</p>
+                                </div>
+                            </div>
+                            <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 space-y-6 scrollbar-hide">
+                                {messages.length === 0 && (
+                                    <div className="text-center py-20 opacity-20 serif italic text-2xl">ARCHETYPE</div>
+                                )}
+                                {messages.map((m, i) => (
+                                    <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
+                                        <div className={`p-4 text-[12px] leading-relaxed max-w-[85%] ${m.role === 'user' ? 'bg-white text-black font-medium' : 'bg-white/5 text-gray-400 border border-white/5'}`}>
+                                            {m.text}
+                                        </div>
+                                    </div>
+                                ))}
+                                {loading && <div className="text-[10px] text-[#00df81] animate-pulse uppercase tracking-widest">Calculando Resposta...</div>}
+                            </div>
+                            <form onSubmit={handleSend} className="p-6 border-t border-white/10 bg-black">
+                                <input 
+                                    value={input} 
+                                    onChange={e => setInput(e.target.value)} 
+                                    className="w-full bg-white/5 border border-white/10 p-4 text-[10px] outline-none font-bold tracking-widest text-white focus:border-[#00df81] transition-all" 
+                                    placeholder="ENVIE SUA DÚVIDA..." 
+                                />
+                            </form>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const Footer = () => (
+            <footer className="py-24 px-8 bg-white text-black text-center border-t border-black/5">
+                <div className="sans-bold text-4xl uppercase tracking-widest mb-8 italic">ARCHETYPE</div>
+                <p className="text-[10px] uppercase tracking-[0.4em] opacity-30">&copy; 2024 ARCHETYPE SYSTEM. O 1% EXIGE PRECISÃO.</p>
+            </footer>
+        );
+
+        const App = () => {
+            useEffect(() => {
+                const obs = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) e.target.classList.add('active'); }), { threshold: 0.1 });
+                document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+            }, []);
+            return (
+                <div className="relative">
+                    <Header />
+                    <Hero />
+                    <Methodology />
+                    <Gallery />
+                    <AIAnalysis />
+                    <StrategicDiagnosis />
+                    <ChatBot />
+                    <Footer />
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
